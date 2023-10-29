@@ -10,15 +10,21 @@ async fn main() -> io::Result<()> {
         let (mut socket, _) = listener.accept().await?;
         tokio::spawn(async move {
             let (random_string, challenge) = generate_challenge();
+            println!("Challenge: {}", challenge);
             socket.write_all(challenge.as_bytes()).await.unwrap();
             let mut buf = [0; 1024];
             let n = socket.read(&mut buf).await.unwrap();
             let nonce = String::from_utf8_lossy(&buf[..n]).to_string();
+            println!("Received nonce: {}", nonce);
             if verify_proof(&random_string, &nonce) {
-                let quote = get_random_quote();  // Assume this function is implemented
+                println!("PoW verified");
+                let quote = get_random_quote();
                 socket.write_all(quote.as_bytes()).await.unwrap();
+            } else {
+                println!("PoW verification failed");
             }
         });
+
     }
 }
 
@@ -36,7 +42,7 @@ fn generate_challenge() -> (String, String) {
 fn verify_proof(random_string: &str, nonce: &str) -> bool {
     let data = format!("{}{}", random_string, nonce);
     let hash = Sha256::digest(data.as_bytes());
-    hash.starts_with(b"00000")  // Assuming the requirement is 5 leading zeros
+    hash.starts_with(b"000")  // Assuming the requirement is 5 leading zeros
 }
 
 fn get_random_quote() -> String {
