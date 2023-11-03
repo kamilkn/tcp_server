@@ -5,6 +5,8 @@ use simple_logger::SimpleLogger;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+const REQUIRED_ZEROS: &str = "0000";
+
 #[tokio::main]
 async fn main() -> io::Result<()> {
     SimpleLogger::new().init().unwrap();
@@ -14,7 +16,7 @@ async fn main() -> io::Result<()> {
 
         tokio::spawn(async move {
             match handle_connection(socket).await {
-                Ok(_) => info!("Connection handled successfully"),
+                Ok(_) => info!("Request completed"),
                 Err(e) => error!("Error handling connection: {:?}", e),
             }
         });
@@ -32,7 +34,7 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
 
     if verify_proof(&random_string, &nonce) {
         info!("PoW verified");
-        let quote = get_random_quote();
+        let quote = "Good job!";
         socket.write_all(quote.as_bytes()).await?;
     } else {
         error!("PoW verification failed");
@@ -53,16 +55,12 @@ fn generate_challenge() -> (String, String) {
         .take(10)
         .map(char::from)
         .collect();
-    let challenge = format!("{}:{}", random_string, "000"); // 3 leading zeros as an example
+    let challenge = format!("{}:{}", random_string, REQUIRED_ZEROS); // 3 leading zeros as an example
     (random_string, challenge)
 }
 
 fn verify_proof(random_string: &str, nonce: &str) -> bool {
     let data = format!("{}{}", random_string, nonce);
     let hash = Sha256::digest(data.as_bytes());
-    hash.starts_with(b"000") // Assuming the requirement is 3 leading zeros
-}
-
-fn get_random_quote() -> String {
-    "The only true wisdom is in knowing you know nothing.".to_string() // Placeholder
+    hash.starts_with(REQUIRED_ZEROS.as_bytes()) // Assuming the requirement is 3 leading zeros
 }
