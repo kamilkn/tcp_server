@@ -6,8 +6,10 @@ use std::error::Error;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-use utils::{ProofOfWork, sha2_256::Sha2_256};
-mod utils;
+use tcp_pow::pow::{ProofOfWork, sha2_256::Sha2_256};
+use tcp_pow::store::quotes::QuotesStore;
+
+
 
 #[tokio::main]
 async fn main() {
@@ -21,8 +23,8 @@ async fn main() {
 }
 
 async fn run() -> Result<(), Box<dyn Error>> {
-    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let host = env::var("HOST").unwrap_or("127.0.0.1".to_string());
+    let port = env::var("PORT").unwrap_or("8080".to_string());
     let listener = TcpListener::bind(format!("{}:{}", host, port)).await?;
 
     info!("Server run on {}:{}", host, port);
@@ -59,6 +61,12 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
     let nonce = read_nonce(&mut socket).await?;
 
     if Sha2_256::verify_proof(&pow_algorithm,&random_string, &nonce, zeros) {
+        let quotes_store = QuotesStore::new(vec![
+            "The only true wisdom is in knowing you know nothing".to_string(),
+            "It does not matter how slowly you go as long as you do not stop".to_string(),
+            "In the middle of every difficulty lies opportunity".to_string(),
+        ]);
+
         info!("PoW verified");
         let quote = "Good job!";
         socket.write_all(quote.as_bytes()).await?;
