@@ -1,11 +1,13 @@
-use log::{error, info};
-
-use simple_logger::SimpleLogger;
 use std::error::Error;
+use std::env;
+use dotenv::dotenv;
+use log::{error, info};
+use simple_logger::SimpleLogger;
 use tokio::io::{self, AsyncWriteExt, AsyncReadExt};
 use tokio::net::{TcpListener, TcpStream};
 
-mod config;
+use utils::sha2_256::{generate_challenge, verify_proof};
+
 mod utils {
   pub mod sha2_256;
 }
@@ -34,11 +36,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
 }
 
 async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
+  dotenv().ok();
 
-  use config::{ZEROS, LENGTH};
-  use utils::sha2_256::{generate_challenge, verify_proof};
+  let zeros: usize = env::var("ZEROS").unwrap().parse().expect("ZEROS must be a number");
+  let length: usize = env::var("LENGTH").unwrap().parse().expect("LENGTH must be a number");
 
-  let (random_string, challenge) = generate_challenge(LENGTH, ZEROS);
+  let (random_string, challenge) = generate_challenge(length, zeros);
 
   info!("Challenge: {}", challenge);
 
@@ -46,7 +49,7 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
 
   let nonce = read_nonce(&mut socket).await?;
 
-  if verify_proof(&random_string, &nonce, ZEROS) {
+  if verify_proof(&random_string, &nonce, zeros) {
       info!("PoW verified");
       let quote = "Good job!";
       socket.write_all(quote.as_bytes()).await?;
