@@ -6,11 +6,8 @@ use std::error::Error;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-use utils::sha2_256::{generate_challenge, verify_proof};
-
-mod utils {
-    pub mod sha2_256;
-}
+use utils::{ProofOfWork, sha2_256::Sha2_256};
+mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -51,7 +48,9 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
         .parse()
         .expect("LENGTH must be a number");
 
-    let (random_string, challenge) = generate_challenge(length, zeros);
+    let pow_algorithm = Sha2_256;
+
+    let (random_string, challenge) = ProofOfWork::generate_challenge(&pow_algorithm, length, zeros);
 
     info!("Challenge: {}", challenge);
 
@@ -59,7 +58,7 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
 
     let nonce = read_nonce(&mut socket).await?;
 
-    if verify_proof(&random_string, &nonce, zeros) {
+    if Sha2_256::verify_proof(&pow_algorithm,&random_string, &nonce, zeros) {
         info!("PoW verified");
         let quote = "Good job!";
         socket.write_all(quote.as_bytes()).await?;
