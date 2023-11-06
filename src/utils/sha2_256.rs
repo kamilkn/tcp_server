@@ -1,13 +1,5 @@
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use tokio::io::{self, AsyncReadExt};
-use tokio::net::TcpStream;
-
-pub async fn read_nonce(socket: &mut TcpStream) -> io::Result<String> {
-    let mut buf = [0; 1024];
-    let n = socket.read(&mut buf).await?;
-    Ok(String::from_utf8_lossy(&buf[..n]).to_string())
-}
 
 pub fn generate_challenge(length: usize, zeros: usize) -> (String, String) {
     let random_string: String = rand::thread_rng()

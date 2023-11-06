@@ -2,10 +2,13 @@ use log::{error, info};
 
 use simple_logger::SimpleLogger;
 use std::error::Error;
-use tokio::io::{self, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream}; 
+use tokio::io::{self, AsyncWriteExt, AsyncReadExt};
+use tokio::net::{TcpListener, TcpStream};
+
 mod config;
-mod zeros_algorithm;
+mod utils {
+  pub mod sha2_256;
+}
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +36,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
 async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
 
   use config::{ZEROS, LENGTH};
-  use zeros_algorithm::{read_nonce, generate_challenge, verify_proof};
+  use utils::sha2_256::{generate_challenge, verify_proof};
 
   let (random_string, challenge) = generate_challenge(LENGTH, ZEROS);
 
@@ -52,4 +55,10 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
   }
 
   Ok(())
+}
+
+pub async fn read_nonce(socket: &mut TcpStream) -> io::Result<String> {
+  let mut buf = [0; 1024];
+  let n = socket.read(&mut buf).await?;
+  Ok(String::from_utf8_lossy(&buf[..n]).to_string())
 }
